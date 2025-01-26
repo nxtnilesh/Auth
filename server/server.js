@@ -1,40 +1,48 @@
-import express from "express";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import logger from "./config/logger.js";
-import { errorHandler } from "./middlewares/errorHandler.js";
-import authRoutes from "./routes/authRoutes.js";
-import profileRoutes from "./routes/profileRoutes.js";
-
-dotenv.config();
+import express from 'express';
+import connectDB from './config/db.js';
+import envConfig from './config/env.js';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
+import xss from 'xss-clean';
+import rateLimit from 'express-rate-limit';
+import hpp from 'hpp';
+import authRoutes from './routes/auth.routes.js';
+import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
 
+// Connect DB
+connectDB();
+
 // Middleware
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
 app.use(express.json());
 app.use(cookieParser());
+app.use(helmet());
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100
+});
+app.use(limiter);
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes);
+app.use('/api/v1/auth', authRoutes);
 
-// Error handler
+// Error handling
 app.use(errorHandler);
 
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => logger.info("MongoDB Connected"))
-  .catch((err) => logger.error(err));
+const PORT = envConfig.port || 5000;
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+app.listen(PORT, () => 
+  console.log(`Server running in ${envConfig.nodeEnv} mode on port ${PORT}`)
+);
