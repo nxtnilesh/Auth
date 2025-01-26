@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { registerUser } from "../api/auth";
+import { registerUser } from "../api/axios";
 import { useNavigate } from "react-router-dom";
 
 const Register = () => {
